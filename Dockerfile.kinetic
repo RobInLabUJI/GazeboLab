@@ -1,4 +1,4 @@
-FROM nvidia/opengl:1.0-glvnd-devel-ubuntu18.04
+FROM nvidia/opengl:1.1-glvnd-devel-ubuntu16.04
 
 ################################## JUPYTERLAB ##################################
 
@@ -6,16 +6,15 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 
-RUN apt-get -o Acquire::ForceIPv4=true update && apt-get -yq dist-upgrade \
- && apt-get -o Acquire::ForceIPv4=true install -yq --no-install-recommends \
+RUN apt-get update && apt-get install -yq --no-install-recommends \
 	locales cmake git build-essential \
-    python-pip \
-	python3-pip python3-setuptools \
+    python-pip python3-pip python3-setuptools \
+    dirmngr gnupg2 lsb-release \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install --upgrade pip setuptools \
- && python3 -m pip install jupyterlab==0.35.4 bash_kernel==0.7.1 tornado==5.1.1 \
+ && python3 -m pip install jupyterlab bash_kernel \
  && python3 -m bash_kernel.install
 
 ENV SHELL=/bin/bash \
@@ -37,13 +36,6 @@ CMD ["jupyter", "lab", "--no-browser", "--ip=0.0.0.0", "--NotebookApp.token=''"]
 
 ###################################### ROS #####################################
 
-# install packages
-RUN apt-get -o Acquire::ForceIPv4=true update && apt-get -o Acquire::ForceIPv4=true install -q -y \
-    dirmngr \
-    gnupg2 \
-    lsb-release \
-    && rm -rf /var/lib/apt/lists/*
-
 # setup keys
 RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
 
@@ -51,21 +43,25 @@ RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C1CF6E31E6
 RUN echo "deb http://packages.ros.org/ros/ubuntu `lsb_release -sc` main" > /etc/apt/sources.list.d/ros-latest.list
 
 # install bootstrap tools
-RUN apt-get -o Acquire::ForceIPv4=true update && apt-get -o Acquire::ForceIPv4=true install --no-install-recommends -y \
-    python-rosdep \
-    python-rosinstall \
-    python-vcstools \
-    python-catkin-tools \
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    python-rosdep python-rosinstall python-vcstools python-catkin-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # bootstrap rosdep
-RUN rosdep init \
-    && rosdep update
+RUN rosdep init
+
+RUN rosdep fix-permissions
+
+USER ${NB_USER}
+
+RUN rosdep update
+
+USER root
 
 # install ros packages
-ENV ROS_DISTRO melodic
-RUN apt-get -o Acquire::ForceIPv4=true update && apt-get -o Acquire::ForceIPv4=true install -y \
-    ros-melodic-desktop-full=1.4.1-0* \
+ENV ROS_DISTRO kinetic
+RUN apt-get update && apt-get install -y \
+    ros-kinetic-desktop-full \
     && rm -rf /var/lib/apt/lists/*
 
 # setup entrypoint
@@ -76,29 +72,6 @@ ENTRYPOINT ["/ros_entrypoint.sh"]
 
 RUN mkdir -p /home/jovyan/.ros
 RUN chown jovyan.jovyan /home/jovyan/.ros
-
-################################ Install Gazebo ################################
-
-RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
-
-# setup sources.list
-RUN . /etc/os-release \
-    && echo "deb http://packages.osrfoundation.org/gazebo/$ID-stable `lsb_release -sc` main" > /etc/apt/sources.list.d/gazebo-latest.list
-
-# install gazebo packages
-RUN apt-get update && apt-get install -q -y \
-    gazebo9=9.13.0-1* libgazebo9-dev ros-melodic-gazebo-ros-pkgs ros-melodic-gazebo-ros-control \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && apt-get upgrade -q -y \
-    libignition-math2 \
-    && rm -rf /var/lib/apt/lists/*
-
-#RUN apt-get update && apt-get upgrade -q -y \
-#      python-catkin-tools \
-#    && rm -rf /var/lib/apt/lists/*
-
-RUN sudo rosdep fix-permissions
 
 ##################################### TAIL #####################################
 
