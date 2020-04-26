@@ -91,9 +91,19 @@ RUN cd ${HOME}/.gazebo \
 
 RUN chown -R ${NB_USER}:${NB_USER} ${HOME}/.gazebo
 
+RUN rosdep init
+
+USER ${NB_USER}
+
+RUN rosdep update
+
+USER root
+
 COPY notebooks/ ${HOME}/notebooks/
 
 RUN chown -R ${NB_USER}:${NB_USER} ${HOME}/notebooks
 
 USER ${NB_USER}
+
+RUN echo "source /opt/ros/kinetic/setup.bash" >> ~/.bashrc
 
