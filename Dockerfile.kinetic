@@ -36,23 +36,46 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-kinetic-ur-kinematics ros-kinetic-gazebo-ros-control \
     && rm -rf /var/lib/apt/lists/*
 
-#RUN apt-get update && apt-get install -y --no-install-recommends \
-#    ros-kinetic-husky-* \
-#    && rm -rf /var/lib/apt/lists/*
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-kinetic-fetch-gazebo-demo \
     && rm -rf /var/lib/apt/lists/*
-
-#RUN apt-get update && apt-get install -y --no-install-recommends \
-#    ros-kinetic-pr2-simulator \
-#    ros-kinetic-fetch-gazebo-demo \
-#    ros-kinetic-husky-* ros-kinetic-ur-kinematics \
-#    ros-kinetic-cob-simulation \
-#    && rm -rf /var/lib/apt/lists/*
 
 # setup entrypoint
 COPY ./ros_entrypoint.sh /
 
 ENTRYPOINT ["/ros_entrypoint.sh"]
-CMD ["bash"]
+
+################################## JUPYTERLAB ##################################
+
+RUN apt-get update && apt-get install -yq --no-install-recommends \
+	locales cmake git build-essential \
+    python-pip python-setuptools \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --upgrade pip \
+ && python -m pip install jupyterlab bash_kernel \
+ && python -m bash_kernel.install
+
+ENV SHELL=/bin/bash \
+	NB_USER=jovyan \
+	NB_UID=1000 \
+	LANG=en_US.UTF-8 \
+	LANGUAGE=en_US.UTF-8
+
+ENV HOME=/home/${NB_USER}
+
+RUN adduser --disabled-password \
+	--gecos "Default user" \
+	--uid ${NB_UID} \
+	${NB_USER}
+
+EXPOSE 8888
+
+WORKDIR ${HOME}
+
+USER ${NB_USER}
+
+CMD ["jupyter", "lab", "--no-browser", "--ip=0.0.0.0", \
+     "--NotebookApp.token=''"]
+
