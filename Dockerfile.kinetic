@@ -1,101 +1,50 @@
-FROM nvidia/opengl:1.1-glvnd-devel-ubuntu16.04
+FROM nvidia/opengl:1.1-glvnd-runtime-ubuntu16.04
 
-################################## JUPYTERLAB ##################################
+# This is an auto generated Dockerfile for ros:ros-core
+# generated from docker_images/create_ros_core_image.Dockerfile.em
+#FROM ubuntu:xenial
 
-ENV DEBIAN_FRONTEND noninteractive
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
-
-RUN apt-get update && apt-get install -yq --no-install-recommends \
-	locales cmake git build-essential \
-    python-pip python3-pip python3-setuptools \
-    dirmngr gnupg2 lsb-release \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
-
-RUN pip3 install --upgrade pip setuptools \
- && python3 -m pip install jupyterlab bash_kernel \
- && python3 -m bash_kernel.install
-
-ENV SHELL=/bin/bash \
-	NB_USER=jovyan \
-	NB_UID=1000 \
-	LANG=en_US.UTF-8 \
-	LANGUAGE=en_US.UTF-8
-
-ENV HOME=/home/${NB_USER}
-
-RUN adduser --disabled-password \
-	--gecos "Default user" \
-	--uid ${NB_UID} \
-	${NB_USER}
-
-EXPOSE 8888
-
-CMD ["jupyter", "lab", "--no-browser", "--ip=0.0.0.0", "--NotebookApp.token=''"]
-
-###################################### ROS #####################################
+# install packages
+RUN apt-get update && apt-get install -q -y --no-install-recommends \
+    dirmngr \
+    gnupg2 \
+    && rm -rf /var/lib/apt/lists/*
 
 # setup keys
 RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
 
 # setup sources.list
-RUN echo "deb http://packages.ros.org/ros/ubuntu `lsb_release -sc` main" > /etc/apt/sources.list.d/ros-latest.list
+RUN echo "deb http://packages.ros.org/ros/ubuntu xenial main" > /etc/apt/sources.list.d/ros1-latest.list
 
-# install bootstrap tools
-RUN apt-get update && apt-get install --no-install-recommends -y \
-    python-rosdep python-rosinstall python-vcstools python-catkin-tools \
-    && rm -rf /var/lib/apt/lists/*
+# setup environment
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
 
-# bootstrap rosdep
-RUN rosdep init
-
-RUN rosdep fix-permissions
-
-USER ${NB_USER}
-
-RUN rosdep update
-
-USER root
+ENV ROS_DISTRO kinetic
 
 # install ros packages
-ENV ROS_DISTRO kinetic
-RUN apt-get update && apt-get install -y \
-    ros-kinetic-desktop-full \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-kinetic-desktop-full=1.3.2-0* \
     && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-kinetic-kobuki-desktop \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-kinetic-ur-gazebo ros-kinetic-ur5-moveit-config \
+    ros-kinetic-ur-kinematics ros-kinetic-gazebo-ros-control \
+    && rm -rf /var/lib/apt/lists/*
+
+#RUN apt-get update && apt-get install -y --no-install-recommends \
+#    ros-kinetic-pr2-simulator \
+#    ros-kinetic-fetch-gazebo-demo \
+#    ros-kinetic-husky-* ros-kinetic-ur-kinematics \
+#    ros-kinetic-cob-simulation \
+#    && rm -rf /var/lib/apt/lists/*
 
 # setup entrypoint
 COPY ./ros_entrypoint.sh /
-RUN chmod a+x /ros_entrypoint.sh
 
 ENTRYPOINT ["/ros_entrypoint.sh"]
-
-RUN mkdir -p /home/jovyan/.ros
-RUN chown jovyan.jovyan /home/jovyan/.ros
-
-##################################### TAIL #####################################
-
-RUN mkdir ${HOME}/ros-gazebo
-
-RUN chown ${NB_UID} ${HOME}/ros-gazebo
- 
-USER ${NB_USER}
-
-WORKDIR ${HOME}/ros-gazebo
-
-RUN mkdir ${HOME}/ros-gazebo/catkin_ws/
-
-ADD src ${HOME}/ros-gazebo/catkin_ws/src
-
-RUN rosdep update && \
-    rosdep install -y \
-      --from-paths \
-        ${HOME}/ros-gazebo/catkin_ws/src/ \
-      --ignore-src && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN cd ${HOME}/ros-gazebo/catkin_ws \
- && catkin config --extend /opt/ros/$ROS_DISTRO \
- && catkin build
-
-
+CMD ["bash"]
