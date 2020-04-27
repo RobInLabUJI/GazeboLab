@@ -99,6 +99,8 @@ RUN rosdep update
 
 USER root
 
+RUN python -m pip install numpy matplotlib==2.0.0
+
 COPY notebooks/ ${HOME}/notebooks/
 
 RUN chown -R ${NB_USER}:${NB_USER} ${HOME}/notebooks
