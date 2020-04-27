@@ -1,0 +1,12 @@
+#!/bin/bash
+xhost +local:root
+
+docker run -it \
+    --gpus=all \
+    --env="DISPLAY" \
+    --env="QT_X11_NO_MITSHM=1" \
+    --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+    -p 8888:8888 \
+    gazebolab:melodic
+
+xhost -local:root

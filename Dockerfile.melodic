@@ -1,8 +1,15 @@
-FROM nvidia/opengl:1.1-glvnd-runtime-ubuntu16.04
+FROM nvidia/opengl:1.0-glvnd-devel-ubuntu18.04
 
 # This is an auto generated Dockerfile for ros:ros-core
 # generated from docker_images/create_ros_core_image.Dockerfile.em
-# FROM ubuntu:xenial
+# FROM ubuntu:bionic
+
+# setup timezone
+RUN echo 'Etc/UTC' > /etc/timezone && \
+    ln -s /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
+    apt-get update && \
+    apt-get install -q -y --no-install-recommends tzdata && \
+    rm -rf /var/lib/apt/lists/*
 
 # install packages
 RUN apt-get update && apt-get install -q -y --no-install-recommends \
@@ -14,36 +21,36 @@ RUN apt-get update && apt-get install -q -y --no-install-recommends \
 RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
 
 # setup sources.list
-RUN echo "deb http://packages.ros.org/ros/ubuntu xenial main" > /etc/apt/sources.list.d/ros1-latest.list
+RUN echo "deb http://packages.ros.org/ros/ubuntu bionic main" > /etc/apt/sources.list.d/ros1-latest.list
 
 # setup environment
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 
-ENV ROS_DISTRO kinetic
+ENV ROS_DISTRO melodic
 
 # install ros packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ros-kinetic-desktop-full=1.3.2-0* \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ros-kinetic-kobuki-desktop \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ros-kinetic-ur-gazebo ros-kinetic-ur5-moveit-config \
-    ros-kinetic-ur-kinematics ros-kinetic-gazebo-ros-control \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ros-kinetic-fetch-gazebo-demo \
+    ros-melodic-desktop-full=1.4.1-0* \
     && rm -rf /var/lib/apt/lists/*
 
 # setup entrypoint
 COPY ./ros_entrypoint.sh /
 
 ENTRYPOINT ["/ros_entrypoint.sh"]
+
+#RUN apt-get update && apt-get install -y --no-install-recommends \
+#    ros-melodic-kobuki-desktop \
+#    && rm -rf /var/lib/apt/lists/*
+
+#RUN apt-get update && apt-get install -y --no-install-recommends \
+#    ros-melodic-ur-gazebo ros-melodic-ur5-moveit-config \
+#    ros-melodic-ur-kinematics ros-melodic-gazebo-ros-control \
+#    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-melodic-fetch-gazebo-demo ros-melodic-gazebo-ros-control \
+    && rm -rf /var/lib/apt/lists/*
 
 ################################## JUPYTERLAB ##################################
 
@@ -53,8 +60,9 @@ RUN apt-get update && apt-get install -yq --no-install-recommends \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pip \
- && python -m pip install jupyterlab bash_kernel \
+RUN pip install --upgrade pip setuptools\
+ && python -m pip install jupyterlab==0.33.12 \
+    bash_kernel==0.7.1 tornado==5.1.1 subprocess32==3.2.7 \
  && python -m bash_kernel.install
 
 ENV SHELL=/bin/bash \
@@ -91,6 +99,14 @@ RUN cd ${HOME}/.gazebo \
 
 RUN chown -R ${NB_USER}:${NB_USER} ${HOME}/.gazebo
 
+# install bootstrap tools
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    python-rosdep \
+    python-rosinstall \
+    python-vcstools \
+    python-catkin-tools \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN rosdep init
 
 USER ${NB_USER}
@@ -98,6 +114,8 @@ USER ${NB_USER}
 RUN rosdep update
 
 USER root
+
+################################### NOTEBOOKS ##################################
 
 COPY notebooks/ ${HOME}/notebooks/
 
