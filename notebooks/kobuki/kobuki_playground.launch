@@ -1,0 +1,15 @@
+<!-- Launches Kobuki Gazebo simulation in an empty world -->
+<launch>
+
+  <env name="GAZEBO_MODEL_PATH" value="$(find fetch_gazebo)/models:$(optenv GAZEBO_MODEL_PATH)" />
+
+  <!-- start Gazebo with an empty world -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="use_sim_time" value="true"/>
+    <arg name="debug" value="false"/>
+    <arg name="world_name" value="$(env HOME)/notebooks/kobuki/table_obstacles.world"/>
+  </include>
+
+  <!-- spawn the robot -->
+  <include file="$(find kobuki_gazebo)/launch/includes/robot.launch.xml"/>
+</launch>
